@@ -1,0 +1,66 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Crusoe's Economy Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.1.1/",
+    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.21.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/"
+  }
+}
+</script>
+<style>
+  @keyframes stat-change-anim {
+    from {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateY(-25px);
+      opacity: 0;
+    }
+  }
+  .stat-change {
+    animation: stat-change-anim 1.5s ease-out forwards;
+  }
+
+  @keyframes idle-anim {
+    0%, 100% { transform: scale(1, 1); }
+    50% { transform: scale(1.02, 1.05) translateY(-1px); }
+  }
+
+  @keyframes walk-anim {
+    0%, 100% { transform: translateY(0); }
+    25% { transform: translateY(-3px) rotate(-2deg); }
+    75% { transform: translateY(-2px) rotate(2deg); }
+  }
+
+  @keyframes gather-anim {
+    0%, 100% { transform: rotate(-5deg); }
+    50% { transform: rotate(20deg); }
+  }
+
+  .anim-idle {
+    animation: idle-anim 3s ease-in-out infinite;
+  }
+  .anim-walk {
+    animation: walk-anim 0.7s ease-in-out infinite;
+  }
+  .anim-gather {
+    transform-origin: 50% 90%;
+    animation: gather-anim 1.2s ease-in-out infinite;
+  }
+</style>
+</head>
+  <body class="bg-gray-900 text-white overflow-hidden">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

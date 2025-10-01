@@ -1,0 +1,5 @@
+{
+  "name": "Crusoe's Economy Simulator",
+  "description": "A simulation of a Robinson Crusoe-style economy with two characters, Robinson and Friday. The simulation models basic economic concepts like resource gathering, crafting, and trade. An event queue manages actions, and an AI model determines outcomes for trade negotiations, creating a dynamic economic environment.",
+  "requestFramePermissions": []
+}
