@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import MapView from './components/MapView';
@@ -30,7 +31,7 @@ import { INITIAL_CONFIG, INITIAL_CHARACTERS, INITIAL_GAME_OBJECTS } from './cons
 import { getTradeDecision, getCharacterGoal, specifyInvention, generateInventionSVG } from './services/geminiService';
 import { generateIsland, findRandomLandPosition } from './util/islandGenerator';
 
-const VERSION = "1.3";
+const VERSION = "1.4"; //Increment every time you make changes
 
 const App: React.FC = () => {
     const [config, setConfig] = useState<Config>(INITIAL_CONFIG);
@@ -390,8 +391,10 @@ const App: React.FC = () => {
                  setEventQueue(prev => prev.slice(1));
                  break;
             case GameEventType.TRADE_INITIATE: {
+                console.log(`[TRADE_DEBUG] Processing TRADE_INITIATE event for ${character.name}. Payload:`, event.payload);
                 const { targetCharacterId, ...offer } = event.payload;
                 const targetCharacter = charactersRef.current.find(c => c.id === targetCharacterId);
+                
                 if (targetCharacter) {
                     const tradeId = `trade_${Date.now()}`;
                     const newTrade: ActiveTrade = {
@@ -421,6 +424,7 @@ const App: React.FC = () => {
                         replaceCurrentEvent(moveEvent);
                     }
                 } else {
+                    console.error(`[TRADE_DEBUG] TRADE_INITIATE failed for ${character.name}: Target character with ID '${targetCharacterId}' not found.`);
                     setEventQueue(prev => prev.slice(1)); // Partner not found
                 }
                 break;
@@ -748,7 +752,7 @@ const App: React.FC = () => {
                                 updates.tools = newTools;
                             }
                             setGameObjects(prev => {
-// FIX: The call to findIndex was missing its callback argument.
+                                // FIX: Corrected findIndex by providing a callback function to find the tree by its ID.
                                 const treeIndex = prev.findIndex(o => o.id === targetId);
                                 if (treeIndex !== -1) {
                                     const tree = prev[treeIndex];
@@ -974,6 +978,9 @@ const App: React.FC = () => {
                         }
                     }
                     
+                    if (eventToQueue.type === GameEventType.TRADE_INITIATE) {
+                        console.log(`[TRADE_DEBUG] IdleCheck is queueing TRADE_INITIATE for ${char.name}. Event to queue:`, eventToQueue);
+                    }
                     queueEvent(eventToQueue, true);
 
                 } else {

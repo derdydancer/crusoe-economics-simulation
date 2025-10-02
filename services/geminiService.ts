@@ -1,4 +1,5 @@
 
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { Character, TradeOffer, Resource, Config, GameObject, GenericInventionType, Invention } from '../types';
 
@@ -64,6 +65,7 @@ const goalDecisionSchema = {
                         properties: {
                             resource: { type: Type.STRING, enum: [Resource.Wood, Resource.Stone, Resource.Coconut, Resource.Fish], description: "Required for GATHER and CONSUME actions." },
                             amount: { type: Type.NUMBER, description: "For GATHER: The total amount of the resource to gather before proceeding. The action will repeat.", nullable: true },
+                            targetCharacterId: { type: Type.STRING, description: "For TRADE_INITIATE: The ID of the character to trade with." },
                             giveResource: { type: Type.STRING, enum: Object.values(Resource), description: "For TRADE_INITIATE: The resource you will give." },
                             giveAmount: { type: Type.NUMBER, description: "For TRADE_INITIATE: The amount you will give." },
                             takeResource: { type: Type.STRING, enum: Object.values(Resource), description: "For TRADE_INITIATE: The resource you want to receive." },
@@ -233,7 +235,7 @@ export const getCharacterGoal = async (
 ${character.shortTermMemory.map(m => `  - ${m}`).join('\n') || "  - No recent actions."}
 
 **Island Information:**
-- The other survivor is ${otherCharacter.name}.
+- The other survivor is ${otherCharacter.name}. Their ID is "${otherCharacter.id}".
 - Crafting Costs: Shelter (${config.shelterWoodCost}W, ${config.shelterStoneCost}S), Axe (${config.axeWoodCost}W, ${config.axeStoneCost}S).
 - **Available Inventions to Build:**
 ${availableInventions.length > 0 ? availableInventions.map(inv => `  - ${inv.name} (ID: ${inv.id}): ${inv.description} Costs: ${JSON.stringify(inv.cost)}`).join('\n') : "  - No new inventions discovered yet."}
@@ -254,7 +256,7 @@ Based on all of the above information, decide on your next high-level goal and c
 - BUILD_INVENTION: Build an available invention if you have the materials. You MUST provide the inventionId.
 - CONSUME: Eat a Coconut or Fish from your inventory.
 - SLEEP: Restore energy.
-- TRADE_INITIATE: Propose a trade with ${otherCharacter.name}.
+- TRADE_INITIATE: Propose a trade with ${otherCharacter.name}. You MUST include the parameter 'targetCharacterId' with the value '${otherCharacter.id}'.
 - IDLE: Do nothing if you are safe and well-stocked.
 
 ${isCritical ? `**CRITICAL ALERT: Your vitals are dangerously low. Your immediate and ONLY priority is to address this. If your Hunger is low, you MUST eat or gather food or trade for food (trade is fastest, try that first). If your energy is low, you MUST sleep. If you have no shelter, sleep on the spot. Do NOT attempt to build, craft, or trade until your vitals are stable.**` : ''}
