@@ -56,15 +56,13 @@ const MapView: React.FC<MapViewProps> = ({ characters, gameObjects, config, isla
 
             const labelContainerClass = char.name === 'Robinson' 
                 ? 'absolute -top-8 w-max flex flex-col items-center' 
-                : 'absolute -bottom-8 w-max flex flex-col items-center';
+                : 'absolute top-8 w-max flex flex-col items-center';
             
             const planQueue = char.planningQueue.map((event, index) => {
                 const icon = getActionIcon(event);
                 if (!icon) return null;
-                const amount = event.payload?.amount;
-                const title = amount ? `${event.type} x${amount}` : event.type;
                 return (
-                    <div key={index} className="bg-black bg-opacity-50 rounded-full w-6 h-6 flex items-center justify-center text-sm" title={title}>
+                    <div key={index} className="bg-black bg-opacity-50 rounded-full w-6 h-6 flex items-center justify-center text-sm" title={event.type}>
                         {icon}
                     </div>
                 );

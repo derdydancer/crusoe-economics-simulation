@@ -288,38 +288,9 @@ const App: React.FC = () => {
                     
                     updateCharacterState(character.id, { planningQueue: newPlan });
 
-                    const firstAction = newPlan[0];
-                    if (firstAction) {
-                        let eventToQueue = { ...firstAction };
-
-                        // If the first action is GATHER, check if a MOVE is needed first.
-                        if (eventToQueue.type === GameEventType.GATHER && eventToQueue.payload?.resource) {
-                            const resource = eventToQueue.payload.resource as Resource;
-                            const resourceSourceTypeMap = { [Resource.Wood]: GameObjectType.Tree, [Resource.Stone]: GameObjectType.Rock, [Resource.Coconut]: GameObjectType.Tree, [Resource.Fish]: GameObjectType.Water };
-                            const targetType = resourceSourceTypeMap[resource];
-                            const target = findClosestGameObject(character.position, targetType);
-                            if (target) {
-                                if (character.position.x === target.position.x && character.position.y === target.position.y) {
-                                    eventToQueue.targetId = target.id;
-                                } else {
-                                    eventToQueue = { 
-                                        type: GameEventType.MOVE, 
-                                        characterId: character.id, 
-                                        payload: { 
-                                            position: target.position, 
-                                            nextEvent: GameEventType.GATHER,
-                                            targetId: target.id, 
-                                            eventPayload: eventToQueue.payload
-                                        } 
-                                    };
-                                }
-                            } else {
-                                addLog(`${character.name} wanted to gather ${resource}, but none could be found.`, 'info', character.id);
-                                eventToQueue = { type: GameEventType.DECIDE_ACTION, characterId: character.id };
-                            }
-                        }
-                        queueEvent(eventToQueue, true);
-                    }
+                    // The new idle check logic will now pick up the first action from the queue.
+                } else {
+                    queueEvent({ type: GameEventType.DECIDE_ACTION, characterId: character.id });
                 }
                 break;
             }    
@@ -335,6 +306,7 @@ const App: React.FC = () => {
                 break;
 
             case GameEventType.GATHER:
+                console.log(`[DEBUG] Processing GATHER event for ${character.name}`, event);
                 const targetObj = gameObjectsRef.current.find(o => o.id === event.targetId);
                 if (targetObj) {
                      const resource = event.payload.resource || (targetObj.type === GameObjectType.Tree ? Resource.Coconut : Resource.Stone);
@@ -349,6 +321,10 @@ const App: React.FC = () => {
                              gatheredAmount: event.payload.gatheredAmount || 0,
                          } 
                      });
+                } else {
+                    addLog(`${character.name} failed to gather: target object not found.`, 'system', character.id);
+                    console.log(`[DEBUG] GATHER event for ${character.name} FAILED: No targetObj found for targetId ${event.targetId}. Character will become idle.`, event);
+                    updateCharacterState(character.id, { currentAction: 'Idle', actionProgress: 0, payload: null });
                 }
                 setEventQueue(prev => prev.slice(1));
                 break;
@@ -615,7 +591,7 @@ const App: React.FC = () => {
                      gathererInventory[trade.takeResource] = (gathererInventory[trade.takeResource] || 0) + trade.takeAmount;
 
                      updateCharacterState(gatherer.id, { inventory: gathererInventory, pendingTrade: null });
-                     updateCharacterState(initiator.id, { inventory: initiatorInventory });
+                     updateCharacterState( initiator.id, { inventory: initiatorInventory });
                      
                      setActiveTrades(prev => prev.map(t => t.id === trade.tradeId ? { ...t, status: TradeStatusState.FULFILLED, finalReasoning: "The agreement was successfully completed." } : t));
                      addLog(`Trade agreement fulfilled successfully!`, 'trade');
@@ -837,23 +813,18 @@ const App: React.FC = () => {
                         actionStepComplete = false;
                     }
                     
+                    updates.lastCompletedAction = char.currentAction;
+                    updates.currentAction = 'Idle';
+                    updates.actionProgress = 0;
                     if (actionStepComplete) {
-                        updates.lastCompletedAction = char.currentAction;
-                        updates.currentAction = 'Idle';
-                        updates.actionProgress = 0;
                         updates.payload = null;
+                        const oldPlanStep = char.planningQueue[0];
+                        console.log(`[DEBUG] Action for ${char.name} complete. Removing step from plan:`, oldPlanStep);
                         
                         const newPlanningQueue = char.planningQueue.slice(1);
                         updates.planningQueue = newPlanningQueue;
                         
-                        if(newPlanningQueue.length > 0) {
-                            queueEvent(newPlanningQueue[0], true);
-                        } else {
-                            queueEvent({ type: GameEventType.DECIDE_ACTION, characterId: char.id }, true);
-                        }
-                    } else {
-                        // Action is repeating (e.g. gathering)
-                        updates.actionProgress = 0;
+                        // The new idle check will handle queueing the next event.
                     }
                 }
             }
@@ -944,12 +915,65 @@ const App: React.FC = () => {
 
         charactersRef.current.forEach(char => {
             const hasPendingEvent = eventQueueRef.current.some(e => e.characterId === char.id);
-            if (char.currentAction === 'Idle' && !hasPendingEvent && char.planningQueue.length === 0) {
-                queueEvent({ type: GameEventType.DECIDE_ACTION, characterId: char.id });
+            if (char.currentAction === 'Idle' && !hasPendingEvent) {
+                if (char.planningQueue.length > 0) {
+                    // Has a plan, execute next step intelligently
+                    const event = char.planningQueue[0];
+                    let eventToQueue = { ...event };
+                    console.log(`[DEBUG] IdleCheck: ${char.name} has a plan. Next step:`, event);
+
+                    // This logic ensures preconditions like location are met before executing the next plan step.
+                    if (eventToQueue.type === GameEventType.GATHER && eventToQueue.payload?.resource) {
+                        const resource = eventToQueue.payload.resource as Resource;
+                        const resourceSourceTypeMap = { [Resource.Wood]: GameObjectType.Tree, [Resource.Stone]: GameObjectType.Rock, [Resource.Coconut]: GameObjectType.Tree, [Resource.Fish]: GameObjectType.Water };
+                        const targetType = resourceSourceTypeMap[resource];
+                        const target = findClosestGameObject(char.position, targetType);
+                        if (target) {
+                            if (char.position.x !== target.position.x || char.position.y !== target.position.y) {
+                                console.log(`[DEBUG] IdleCheck: ${char.name} needs to move for GATHER. Queuing MOVE.`);
+                                eventToQueue = {
+                                    type: GameEventType.MOVE,
+                                    characterId: char.id,
+                                    payload: {
+                                        position: target.position,
+                                        nextEvent: GameEventType.GATHER,
+                                        targetId: target.id,
+                                        eventPayload: eventToQueue.payload
+                                    }
+                                };
+                            } else {
+                                eventToQueue.targetId = target.id;
+                            }
+                        } else {
+                            addLog(`${char.name} wanted to gather ${resource}, but none could be found. Re-evaluating plan.`, 'info', char.id);
+                            updateCharacterState(char.id, { planningQueue: [] }); // Clear invalid plan
+                            eventToQueue = { type: GameEventType.DECIDE_ACTION, characterId: char.id };
+                        }
+                    } else if (eventToQueue.type === GameEventType.BUILD_SHELTER) {
+                        const buildSpot = findEmptySpot(char.position);
+                        if (!buildSpot) {
+                            addLog(`${char.name} can't find a clear spot to build. Re-evaluating plan.`, 'info', char.id);
+                            updateCharacterState(char.id, { planningQueue: [] });
+                            eventToQueue = { type: GameEventType.DECIDE_ACTION, characterId: char.id };
+                        } else if (buildSpot.x !== char.position.x || buildSpot.y !== char.position.y) {
+                            addLog(`${char.name} needs to move to a clear spot to build.`, 'action', char.id);
+                            eventToQueue = { type: GameEventType.MOVE, characterId: char.id, payload: { position: buildSpot, nextEvent: GameEventType.BUILD_SHELTER } };
+                        }
+                    }
+                    
+                    queueEvent(eventToQueue, true);
+
+                } else {
+                    // No plan, make one
+                    console.log(`[DEBUG] IdleCheck: ${char.name} has no plan. Queuing DECIDE_ACTION.`);
+                    queueEvent({ type: GameEventType.DECIDE_ACTION, characterId: char.id });
+                }
+            } else if(char.currentAction === 'Idle' && !hasPendingEvent) {
+                console.log(`[DEBUG] IdleCheck for ${char.name} SKIPPED. Reason: planningQueue length is ${char.planningQueue.length} (expected > 0).`);
             }
         });
 
-    }, [handleEventProcessing, addLog, getActionDuration]);
+    }, [handleEventProcessing, addLog, getActionDuration, findClosestGameObject, findEmptySpot]);
 
     const loopInProgressRef = useRef(false);
     useEffect(() => {
@@ -1018,7 +1042,7 @@ const App: React.FC = () => {
         setCharacters(newCharacters);
         
         addLog('Simulation reset. Press Start to begin.', 'system');
-        newCharacters.forEach(c => queueEvent({ type: GameEventType.DECIDE_ACTION, characterId: c.id }));
+        // Initial DECIDE_ACTION is now handled by the idle check at the end of the tick.
     };
     
     useEffect(() => {
@@ -1044,7 +1068,7 @@ const App: React.FC = () => {
         setCharacters(newCharacters);
         
         addLog("Welcome to Crusoe's Economy Simulator.", 'system');
-        newCharacters.forEach(c => queueEvent({ type: GameEventType.DECIDE_ACTION, characterId: c.id }));
+        // Initial DECIDE_ACTION is now handled by the idle check at the end of the tick.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
