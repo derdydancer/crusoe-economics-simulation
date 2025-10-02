@@ -30,7 +30,7 @@ import { INITIAL_CONFIG, INITIAL_CHARACTERS, INITIAL_GAME_OBJECTS } from './cons
 import { getTradeDecision, getCharacterGoal, specifyInvention, generateInventionSVG } from './services/geminiService';
 import { generateIsland, findRandomLandPosition } from './util/islandGenerator';
 
-const VERSION = "1.1";
+const VERSION = "1.2";
 
 const App: React.FC = () => {
     const [config, setConfig] = useState<Config>(INITIAL_CONFIG);
@@ -625,10 +625,11 @@ const App: React.FC = () => {
 
         let characterUpdateQueue: { id: string, updates: Partial<Character> }[] = [];
         const interruptedCharacterIds = new Set<string>();
+        const INTERRUPTION_COOLDOWN = 10;
 
         for (const char of charactersRef.current) {
             const isCritical = char.stats.hunger < 25 || char.stats.energy < 20;
-            if (isCritical && char.planningQueue.length > 0) {
+            if (isCritical && char.planningQueue.length > 0 && (char.interruptionCooldown || 0) === 0) {
                 interruptedCharacterIds.add(char.id);
                 const reason = char.stats.hunger < 25 ? "starvation" : "exhaustion";
                 const memoryEntry = `My vitals are critical! I must abandon my plan to avoid ${reason}.`;
@@ -641,6 +642,7 @@ const App: React.FC = () => {
                     actionProgress: 0,
                     payload: null,
                     currentTarget: null,
+                    interruptionCooldown: INTERRUPTION_COOLDOWN,
                 }});
             }
         }
@@ -674,6 +676,9 @@ const App: React.FC = () => {
             updates.stats = stats;
              if (char.tradeCooldown > 0) {
                 updates.tradeCooldown = Math.max(0, char.tradeCooldown - 1);
+            }
+            if ((char.interruptionCooldown || 0) > 0) {
+                updates.interruptionCooldown = Math.max(0, char.interruptionCooldown - 1);
             }
 
             if (char.currentAction !== 'Idle') {
@@ -835,6 +840,9 @@ const App: React.FC = () => {
             if (char.currentAction === 'Idle' && !inventionDiscoveryInProgress.current.has(char.id)) {
                 if (Math.random() < configRef.current.inventionChance) {
                     inventionDiscoveryInProgress.current.add(char.id);
+                    // FIX: Capture character ID and name to prevent potential closure issues in async function.
+                    const inventingCharId = char.id;
+                    const inventingCharName = char.name;
                     (async () => {
                         try {
                             const genericTypes = Object.values(GenericInventionType);
@@ -853,11 +861,11 @@ const App: React.FC = () => {
                                 ownerIds: [],
                             };
                             setInventions(prev => [...prev, newInvention]);
-                            addLog(`${char.name} had an idea for a new invention: ${spec.name}!`, 'system', char.id);
+                            addLog(`${inventingCharName} had an idea for a new invention: ${spec.name}!`, 'system', inventingCharId);
                         } catch(e) {
                              console.error("Invention discovery failed:", e)
                         } finally {
-                            inventionDiscoveryInProgress.current.delete(char.id);
+                            inventionDiscoveryInProgress.current.delete(inventingCharId);
                         }
                     })();
                 }
@@ -977,22 +985,20 @@ const App: React.FC = () => {
 
     }, [handleEventProcessing, addLog, getActionDuration, findClosestGameObject, findEmptySpot]);
 
-    const loopInProgressRef = useRef(false);
+    const gameTickCallbackRef = useRef<() => Promise<void>>();
+    useEffect(() => {
+        gameTickCallbackRef.current = gameTick;
+    }, [gameTick]);
+
     useEffect(() => {
         let gameLoopTimeout: number | undefined;
 
         const runGameLoop = async () => {
-            if (!isRunningRef.current) {
-                loopInProgressRef.current = false;
-                return;
-            }
-            if (loopInProgressRef.current) {
-                return;
-            }
+            if (!isRunningRef.current) return;
             
-            loopInProgressRef.current = true;
-            await gameTick();
-            loopInProgressRef.current = false;
+            if (gameTickCallbackRef.current) {
+                await gameTickCallbackRef.current();
+            }
             
             if (isRunningRef.current) {
                 gameLoopTimeout = window.setTimeout(runGameLoop, configRef.current.simulationSpeed);
@@ -1000,9 +1006,7 @@ const App: React.FC = () => {
         };
 
         if (isRunning) {
-            if (!loopInProgressRef.current) {
-                runGameLoop();
-            }
+            runGameLoop();
         }
 
         return () => {
@@ -1010,7 +1014,7 @@ const App: React.FC = () => {
                 clearTimeout(gameLoopTimeout);
             }
         };
-    }, [isRunning, gameTick]);
+    }, [isRunning]);
     
     const handleReset = () => {
         setIsRunning(false);

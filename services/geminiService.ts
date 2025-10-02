@@ -216,6 +216,7 @@ export const getCharacterGoal = async (
 
     const worldTime = `Day ${Math.floor(time.getTime() / (1000 * 60 * 60 * 24)) + 1}, ${time.getUTCHours().toString().padStart(2, '0')}:${time.getUTCMinutes().toString().padStart(2, '0')}`;
     const availableInventions = inventions.filter(inv => !character.inventions.includes(inv.id));
+    const isCritical = character.stats.hunger < 25 || character.stats.energy < 20;
 
     const prompt = `You are ${character.name}, a survivor on a remote island. Your primary objective is to survive and improve your situation. It is currently ${worldTime}.
 
@@ -240,6 +241,7 @@ ${character.shortTermMemory.map(m => `  - ${m}`).join('\n') || "  - No recent ac
 ${availableInventions.length > 0 ? availableInventions.map(inv => `  - ${inv.name} (ID: ${inv.id}): ${inv.description} Costs: ${JSON.stringify(inv.cost)}`).join('\n') : "  - No new inventions discovered yet."}
 
 **Your Task:**
+${isCritical ? `**CRITICAL ALERT: Your vitals are dangerously low. Your immediate and ONLY priority is to address this. If you are hungry, you MUST eat or gather food. If you are tired, you MUST sleep. Do NOT attempt to build, craft, or trade until your vitals are stable.**` : ''}
 Based on all of the above information, decide on your next high-level goal and create a short plan of actions to achieve it.
 - **Analyze your needs:** Are you hungry? Tired? Do you need better tools, a shelter, or a new invention?
 - **Be strategic:** Create multi-step plans. If you want to build a shelter, your plan should first be to GATHER or TRADE_INITIATE for wood and stone, then BUILD_SHELTER. If you have a comparative advantage in gathering something to use as a medium of exchange to get what you want, then do that. For example you may be a better fisherman than a woodcuutter. Then gather fish and offer to trade with a woodcutter. 

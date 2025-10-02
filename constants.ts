@@ -1,3 +1,4 @@
+
 import { Config, Character, GameObject, GameObjectType, Resource } from './types';
 
 export const INITIAL_CONFIG: Config = {
@@ -78,6 +79,7 @@ export const INITIAL_CHARACTERS: Character[] = [
     },
     inventions: [],
     planningQueue: [],
+    interruptionCooldown: 0,
   },
   {
     id: 'friday',
@@ -107,6 +109,7 @@ export const INITIAL_CHARACTERS: Character[] = [
     },
     inventions: [],
     planningQueue: [],
+    interruptionCooldown: 0,
   },
 ];
 

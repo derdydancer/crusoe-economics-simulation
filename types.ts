@@ -1,3 +1,4 @@
+
 export enum Resource {
   Wood = 'Wood',
   Stone = 'Stone',
@@ -104,6 +105,7 @@ export interface Character {
   longTermMemory: LongTermMemory;
   inventions: string[];
   planningQueue: GameEvent[];
+  interruptionCooldown?: number;
 }
 
 export enum GameObjectType {
