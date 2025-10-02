@@ -30,6 +30,8 @@ import { INITIAL_CONFIG, INITIAL_CHARACTERS, INITIAL_GAME_OBJECTS } from './cons
 import { getTradeDecision, getCharacterGoal, specifyInvention, generateInventionSVG } from './services/geminiService';
 import { generateIsland, findRandomLandPosition } from './util/islandGenerator';
 
+const VERSION = "1.1";
+
 const App: React.FC = () => {
     const [config, setConfig] = useState<Config>(INITIAL_CONFIG);
     const [characters, setCharacters] = useState<Character[]>([]);
@@ -353,7 +355,7 @@ const App: React.FC = () => {
                 break;
             }
             case GameEventType.BUILD_SHELTER:
-                 if ((character.inventory.Wood || 0) < config.shelterWoodCost || (character.inventory.Stone || 0) < config.shelterStoneCost) {
+                 if ((character.inventory.Wood || 0) < configRef.current.shelterWoodCost || (character.inventory.Stone || 0) < configRef.current.shelterStoneCost) {
                      addLog(`${character.name} lacks resources to build a shelter.`, 'info', character.id);
                      replaceCurrentEvent({ type: GameEventType.DECIDE_ACTION, characterId: character.id });
                      break;
@@ -373,7 +375,7 @@ const App: React.FC = () => {
                  }
                  break;
             case GameEventType.CRAFT_AXE:
-                 if ((character.inventory.Wood || 0) < config.axeWoodCost || (character.inventory.Stone || 0) < config.axeStoneCost) {
+                 if ((character.inventory.Wood || 0) < configRef.current.axeWoodCost || (character.inventory.Stone || 0) < configRef.current.axeStoneCost) {
                      addLog(`${character.name} lacks resources to craft an axe.`, 'info', character.id);
                      replaceCurrentEvent({ type: GameEventType.DECIDE_ACTION, characterId: character.id });
                      break;
@@ -608,7 +610,7 @@ const App: React.FC = () => {
                 break;
             }
         }
-    }, [addLog, config, findEmptySpot]);
+    }, [addLog, findEmptySpot]);
 
     const gameTick = useCallback(async () => {
         setSimulationTime(prev => new Date(prev.getTime() + 60 * 60 * 1000));
@@ -1087,6 +1089,7 @@ const App: React.FC = () => {
                     onReset={handleReset}
                     onRestoreDefaults={handleRestoreDefaults}
                     isRunning={isRunning}
+                    version={VERSION}
                 />
             </div>
 

@@ -10,6 +10,7 @@ interface SidebarProps {
   onReset: () => void;
   onRestoreDefaults: () => void;
   isRunning: boolean;
+  version: string;
 }
 
 const speeds = {
@@ -20,7 +21,7 @@ const speeds = {
     'Lightning': 10,
 };
 
-const Sidebar: React.FC<SidebarProps> = ({ config, onConfigChange, onStart, onStop, onReset, onRestoreDefaults, isRunning }) => {
+const Sidebar: React.FC<SidebarProps> = ({ config, onConfigChange, onStart, onStop, onReset, onRestoreDefaults, isRunning, version }) => {
     
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value, type } = e.target;
@@ -65,7 +66,7 @@ const Sidebar: React.FC<SidebarProps> = ({ config, onConfigChange, onStart, onSt
 
   return (
     <div className="h-full bg-gray-800 p-4 flex flex-col">
-        <h1 className="text-2xl font-bold text-cyan-400 mb-4">Crusoe's Sim</h1>
+        <h1 className="text-2xl font-bold text-cyan-400 mb-4">Crusoe's Sim <span className="text-sm font-mono text-gray-400 align-bottom">v{version}</span></h1>
 
         {/* --- Controls Section --- */}
         <div className="mb-4 border-b border-gray-600 pb-4">
