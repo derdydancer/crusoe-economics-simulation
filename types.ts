@@ -203,4 +203,5 @@ export interface Config {
     treeWoodDepletionLimit: number;
     treeRegrowthTime: number; // In ticks
     inventionChance: number;
+    interruptionCooldown: number;
 }

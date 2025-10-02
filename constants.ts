@@ -17,6 +17,7 @@ export const INITIAL_CONFIG: Config = {
   hungerPerFish: 50,
   sleepInShelterMultiplier: 1.5,
   leisureThreshold: 8, // Stop gathering food when this many coconuts are in inventory
+  interruptionCooldown: 24, // Ticks before a critical stat can interrupt a plan again
 
 
   // Action timings (in ticks)

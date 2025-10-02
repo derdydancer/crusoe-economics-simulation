@@ -100,7 +100,6 @@ const inventionSpecificationSchema = {
             type: Type.OBJECT,
             description: "The specific, quantitative gameplay effect of the invention.",
             properties: {
-                // FIX: Ensure enum values are strings
                 type: { type: Type.STRING, enum: ['PRODUCTIVITY_BOOST', 'STAT_DECAY_MODIFIER', 'GATHER_YIELD_BONUS'] },
                 resource: { type: Type.STRING, enum: [Resource.Wood, Resource.Stone, Resource.Coconut, Resource.Fish], nullable: true, description: "Required for PRODUCTIVITY_BOOST and GATHER_YIELD_BONUS." },
                 stat: { type: Type.STRING, enum: ['hunger', 'energy'], nullable: true, description: "Required for STAT_DECAY_MODIFIER." },
@@ -116,7 +115,6 @@ const inventionSpecificationSchema = {
 const inventionSvgSchema = {
     type: Type.OBJECT,
     properties: {
-        // FIX: Ensure description is a static string and does not reference undefined variables.
         svg: { type: Type.STRING, description: "A complete, valid SVG string for the icon. It must be a single path, fill='currentColor', on a 24x24 viewBox. No extra XML tags." }
     },
     required: ["svg"],
@@ -241,13 +239,13 @@ ${character.shortTermMemory.map(m => `  - ${m}`).join('\n') || "  - No recent ac
 ${availableInventions.length > 0 ? availableInventions.map(inv => `  - ${inv.name} (ID: ${inv.id}): ${inv.description} Costs: ${JSON.stringify(inv.cost)}`).join('\n') : "  - No new inventions discovered yet."}
 
 **Your Task:**
-${isCritical ? `**CRITICAL ALERT: Your vitals are dangerously low. Your immediate and ONLY priority is to address this. If you are hungry, you MUST eat or gather food. If you are tired, you MUST sleep. Do NOT attempt to build, craft, or trade until your vitals are stable.**` : ''}
+${isCritical ? `**CRITICAL ALERT: Your vitals are dangerously low. Your immediate and ONLY priority is to address this. If your Hunger is low, you MUST eat or gather food or trade for food (trade is fastest, try that first). If your energy is low, you MUST sleep. If you have no shelter, sleep on the spot. Do NOT attempt to build, craft, or trade until your vitals are stable.**` : ''}
 Based on all of the above information, decide on your next high-level goal and create a short plan of actions to achieve it.
 - **Analyze your needs:** Are you hungry? Tired? Do you need better tools, a shelter, or a new invention?
 - **Be strategic:** Create multi-step plans. If you want to build a shelter, your plan should first be to GATHER or TRADE_INITIATE for wood and stone, then BUILD_SHELTER. If you have a comparative advantage in gathering something to use as a medium of exchange to get what you want, then do that. For example you may be a better fisherman than a woodcuutter. Then gather fish and offer to trade with a woodcutter. 
 - **Specify amounts:** For GATHER actions, specify the total 'amount' of the resource you want to collect. The character will repeat the gather action until this amount is collected.
 - **Use your memory:** Don't repeat actions that just failed. Stay on task.
-- **You must provide a short 'memoryEntry' about the decision you've made.**
+- **You must provide a short 'memoryEntry' about the decision you've made and why (so you can reevaluate later based on the outcome).**
 
 **Available Actions:**
 - GATHER: Collect a basic resource. You MUST specify a target 'amount'.
@@ -258,6 +256,8 @@ Based on all of the above information, decide on your next high-level goal and c
 - SLEEP: Restore energy.
 - TRADE_INITIATE: Propose a trade with ${otherCharacter.name}.
 - IDLE: Do nothing if you are safe and well-stocked.
+
+${isCritical ? `**CRITICAL ALERT: Your vitals are dangerously low. Your immediate and ONLY priority is to address this. If your Hunger is low, you MUST eat or gather food or trade for food (trade is fastest, try that first). If your energy is low, you MUST sleep. If you have no shelter, sleep on the spot. Do NOT attempt to build, craft, or trade until your vitals are stable.**` : ''}
 
 Respond ONLY with a JSON object that conforms to the provided schema.`;
 

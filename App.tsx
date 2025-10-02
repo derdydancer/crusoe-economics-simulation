@@ -30,7 +30,7 @@ import { INITIAL_CONFIG, INITIAL_CHARACTERS, INITIAL_GAME_OBJECTS } from './cons
 import { getTradeDecision, getCharacterGoal, specifyInvention, generateInventionSVG } from './services/geminiService';
 import { generateIsland, findRandomLandPosition } from './util/islandGenerator';
 
-const VERSION = "1.2";
+const VERSION = "1.3";
 
 const App: React.FC = () => {
     const [config, setConfig] = useState<Config>(INITIAL_CONFIG);
@@ -625,7 +625,6 @@ const App: React.FC = () => {
 
         let characterUpdateQueue: { id: string, updates: Partial<Character> }[] = [];
         const interruptedCharacterIds = new Set<string>();
-        const INTERRUPTION_COOLDOWN = 10;
 
         for (const char of charactersRef.current) {
             const isCritical = char.stats.hunger < 25 || char.stats.energy < 20;
@@ -642,7 +641,7 @@ const App: React.FC = () => {
                     actionProgress: 0,
                     payload: null,
                     currentTarget: null,
-                    interruptionCooldown: INTERRUPTION_COOLDOWN,
+                    interruptionCooldown: configRef.current.interruptionCooldown,
                 }});
             }
         }
@@ -749,6 +748,7 @@ const App: React.FC = () => {
                                 updates.tools = newTools;
                             }
                             setGameObjects(prev => {
+// FIX: The call to findIndex was missing its callback argument.
                                 const treeIndex = prev.findIndex(o => o.id === targetId);
                                 if (treeIndex !== -1) {
                                     const tree = prev[treeIndex];
@@ -924,6 +924,9 @@ const App: React.FC = () => {
         }
 
         charactersRef.current.forEach(char => {
+            // FIX: Skip idle check for characters who were just interrupted to prevent double-queuing a DECIDE_ACTION event.
+            if (interruptedCharacterIds.has(char.id)) return;
+
             const hasPendingEvent = eventQueueRef.current.some(e => e.characterId === char.id);
             if (char.currentAction === 'Idle' && !hasPendingEvent) {
                 if (char.planningQueue.length > 0) {

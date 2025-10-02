@@ -133,6 +133,7 @@ const Sidebar: React.FC<SidebarProps> = ({ config, onConfigChange, onStart, onSt
           <div>
             <h3 className="font-semibold text-gray-200 mt-3 mb-2">AI Settings</h3>
             {renderInput('tradeAttemptCooldown', 'Trade Cooldown (ticks)', 10)}
+            {renderInput('interruptionCooldown', 'Interruption Cooldown (ticks)', 1)}
             {renderSlider('aiTemperature', 'AI Creativity', 0.1, 1.0, 0.1)}
             {renderInput('maxNegotiationTurns', 'Max Trade Turns', 1)}
           </div>
