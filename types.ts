@@ -103,6 +103,7 @@ export interface Character {
   shortTermMemory: string[];
   longTermMemory: LongTermMemory;
   inventions: string[];
+  planningQueue: GameEvent[];
 }
 
 export enum GameObjectType {

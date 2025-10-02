@@ -44,7 +44,7 @@ export const INITIAL_CONFIG: Config = {
   inventionChance: 0.005, // 0.5% chance per tick while idle
 
   // Advanced / AI
-  aiModel: 'gemini-2.5-pro',
+  aiModel: 'gemini-2.5-flash',
   maxNegotiationTurns: 4,
   aiTemperature: 0.7,
 };
@@ -77,6 +77,7 @@ export const INITIAL_CHARACTERS: Character[] = [
         lastTrade: null,
     },
     inventions: [],
+    planningQueue: [],
   },
   {
     id: 'friday',
@@ -105,6 +106,7 @@ export const INITIAL_CHARACTERS: Character[] = [
         lastTrade: null,
     },
     inventions: [],
+    planningQueue: [],
   },
 ];
 

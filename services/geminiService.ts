@@ -46,30 +46,41 @@ const goalDecisionSchema = {
             type: Type.STRING,
             description: "A brief explanation for why you chose this goal based on your status and memory."
         },
-        action: {
-            type: Type.STRING,
-            enum: ["GATHER", "BUILD_SHELTER", "CRAFT_AXE", "CONSUME", "SLEEP", "TRADE_INITIATE", "BUILD_INVENTION", "IDLE"],
-            description: "The immediate, single action to take to work towards the goal."
-        },
-        parameters: {
-            type: Type.OBJECT,
-            description: "Parameters for the chosen action. This MUST be null if the action is SLEEP, IDLE, BUILD_SHELTER, or CRAFT_AXE.",
-            nullable: true,
-            properties: {
-                resource: { type: Type.STRING, enum: [Resource.Wood, Resource.Stone, Resource.Coconut, Resource.Fish], description: "Required for GATHER and CONSUME actions." },
-                giveResource: { type: Type.STRING, enum: Object.values(Resource), description: "For TRADE_INITIATE: The resource you will give." },
-                giveAmount: { type: Type.NUMBER, description: "For TRADE_INITIATE: The amount you will give." },
-                takeResource: { type: Type.STRING, enum: Object.values(Resource), description: "For TRADE_INITIATE: The resource you want to receive." },
-                takeAmount: { type: Type.NUMBER, description: "For TRADE_INITIATE: The amount you want to receive." },
-                inventionId: { type: Type.STRING, description: "For BUILD_INVENTION: The ID of the invention to build." },
+        plan: {
+            type: Type.ARRAY,
+            description: "A short sequence of one or more actions to achieve the goal. The first action in the list will be executed immediately.",
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    action: {
+                        type: Type.STRING,
+                        enum: ["GATHER", "BUILD_SHELTER", "CRAFT_AXE", "CONSUME", "SLEEP", "TRADE_INITIATE", "BUILD_INVENTION", "IDLE"],
+                        description: "The action to take."
+                    },
+                    parameters: {
+                        type: Type.OBJECT,
+                        description: "Parameters for the chosen action. This MUST be null if the action is SLEEP, IDLE, BUILD_SHELTER, or CRAFT_AXE.",
+                        nullable: true,
+                        properties: {
+                            resource: { type: Type.STRING, enum: [Resource.Wood, Resource.Stone, Resource.Coconut, Resource.Fish], description: "Required for GATHER and CONSUME actions." },
+                            amount: { type: Type.NUMBER, description: "For GATHER: The total amount of the resource to gather before proceeding. The action will repeat.", nullable: true },
+                            giveResource: { type: Type.STRING, enum: Object.values(Resource), description: "For TRADE_INITIATE: The resource you will give." },
+                            giveAmount: { type: Type.NUMBER, description: "For TRADE_INITIATE: The amount you will give." },
+                            takeResource: { type: Type.STRING, enum: Object.values(Resource), description: "For TRADE_INITIATE: The resource you want to receive." },
+                            takeAmount: { type: Type.NUMBER, description: "For TRADE_INITIATE: The amount you want to receive." },
+                            inventionId: { type: Type.STRING, description: "For BUILD_INVENTION: The ID of the invention to build." },
+                        }
+                    }
+                },
+                required: ["action"]
             }
         },
         memoryEntry: {
             type: Type.STRING,
-            description: "A short, first-person log of your decision for your own memory. E.g., 'I've decided to gather wood for my shelter.'"
+            description: "A short, first-person log of your decision for your own memory. E.g., 'I need to gather wood for my shelter, so I'll get 10 wood then build it.'"
         }
     },
-    required: ["goal", "reasoning", "action", "memoryEntry"]
+    required: ["goal", "reasoning", "plan", "memoryEntry"]
 };
 
 const inventionSpecificationSchema = {
@@ -139,7 +150,6 @@ Respond ONLY with a JSON object that conforms to the provided schema.`;
                 temperature: 0.9,
             },
         });
-        // FIX: Use the .text property to access the response text, not text().
         const jsonText = response.text.trim();
         return JSON.parse(jsonText);
     } catch (error) {
@@ -174,7 +184,6 @@ Respond ONLY with a JSON object containing the SVG string.`;
                 temperature: 0.2,
             },
         });
-        // FIX: Use the .text property to access the response text, not text().
         const jsonText = response.text.trim();
         const parsed = JSON.parse(jsonText);
         return parsed.svg || '<path d="M12 2L2 22h20L12 2zm0 4l7 12H5l7-12z" />';
@@ -197,8 +206,10 @@ export const getCharacterGoal = async (
         return {
             goal: "Survive (AI Disabled)",
             reasoning: "API key not found. Using basic survival logic.",
-            action: character.stats.hunger < 50 ? "GATHER" : "IDLE",
-            parameters: character.stats.hunger < 50 ? { resource: Resource.Coconut } : null,
+            plan: [{
+                action: character.stats.hunger < 50 ? "GATHER" : "IDLE",
+                parameters: character.stats.hunger < 50 ? { resource: Resource.Coconut, amount: 5 } : null,
+            }],
             memoryEntry: "AI is offline. Defaulting to survival mode."
         };
     }
@@ -229,14 +240,15 @@ ${character.shortTermMemory.map(m => `  - ${m}`).join('\n') || "  - No recent ac
 ${availableInventions.length > 0 ? availableInventions.map(inv => `  - ${inv.name} (ID: ${inv.id}): ${inv.description} Costs: ${JSON.stringify(inv.cost)}`).join('\n') : "  - No new inventions discovered yet."}
 
 **Your Task:**
-Based on all of the above information, decide on your next high-level goal and the immediate action you should take.
+Based on all of the above information, decide on your next high-level goal and create a short plan of actions to achieve it.
 - **Analyze your needs:** Are you hungry? Tired? Do you need better tools, a shelter, or a new invention?
-- **Be strategic:** Don't just react. If you want to build something, you might need to gather resources first.
+- **Be strategic:** Create multi-step plans. If you want to build a shelter, your plan should first be to GATHER or TRADE_INITIATE for wood and stone, then BUILD_SHELTER. If you have a comparative advantage in gathering something to use as a medium of exchange to get what you want, then do that. For example you may be a better fisherman than a woodcuutter. Then gather fish and offer to trade with a woodcutter. 
+- **Specify amounts:** For GATHER actions, specify the total 'amount' of the resource you want to collect. The character will repeat the gather action until this amount is collected.
 - **Use your memory:** Don't repeat actions that just failed. Stay on task.
 - **You must provide a short 'memoryEntry' about the decision you've made.**
 
 **Available Actions:**
-- GATHER: Collect a basic resource (Wood, Stone, Coconut, Fish).
+- GATHER: Collect a basic resource. You MUST specify a target 'amount'.
 - BUILD_SHELTER: Build a shelter if you have the materials.
 - CRAFT_AXE: Craft an axe if you have the materials.
 - BUILD_INVENTION: Build an available invention if you have the materials. You MUST provide the inventionId.
@@ -257,12 +269,11 @@ Respond ONLY with a JSON object that conforms to the provided schema.`;
                 temperature: config.aiTemperature,
             },
         });
-        // FIX: Use the .text property to access the response text, not text().
         const jsonText = response.text.trim();
         return JSON.parse(jsonText);
     } catch (error) {
         console.error("Error fetching AI goal decision:", error);
-        return { goal: "Error", reasoning: `API Error: ${error.message}`, action: "IDLE", memoryEntry: `Encountered an error: ${error.message}` };
+        return { goal: "Error", reasoning: `API Error: ${error.message}`, plan: [{ action: "IDLE" }], memoryEntry: `Encountered an error: ${error.message}` };
     }
 }
 
@@ -327,7 +338,6 @@ Respond ONLY with a JSON object that conforms to the provided schema.`;
                 temperature: temperature
             },
         });
-        // FIX: Use the .text property to access the response text, not text().
         const jsonText = response.text.trim();
         return JSON.parse(jsonText);
     } catch (error) {
